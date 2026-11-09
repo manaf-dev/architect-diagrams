@@ -1,0 +1,14 @@
+{
+  "name": "manaf-dev-skills",
+  "owner": { "name": "Manaf" },
+  "description": "Agent skills by Manaf",
+  "plugins": [
+    {
+      "name": "architecture-diagrams",
+      "source": "./",
+      "description": "Professional architecture diagrams with real AWS, Azure, GCP, Kubernetes, Microsoft Fabric and SaaS icons, as editable draw.io files plus SVG/PNG images.",
+      "category": "documentation",
+      "tags": ["architecture", "diagrams", "draw.io", "aws", "azure", "gcp", "kubernetes", "microsoft-fabric", "icons"]
+    }
+  ]
+}

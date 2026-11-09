@@ -1,0 +1,80 @@
+# Microsoft Fabric medallion lakehouse for a fictional retail company's sales analytics.
+# Build: python scripts/archdiagram.py examples/fabric-medallion.yaml --out-dir out
+canvas: {width: 1600, height: 860}
+title: Retail sales analytics — Microsoft Fabric batch platform
+subtitle: Medallion lakehouse → Direct Lake semantic model → Power BI, orchestrated by a Fabric pipeline and version-controlled in GitHub
+credits: "Icons: Microsoft Fabric icon pack (github.com/astrzala/FabricToolset, MIT)"
+
+elements:
+  # --- boundaries (drawn first so they sit behind everything)
+  - {id: ws, type: group, x: 272, y: 104, w: 1192, h: 568, icon: "lib:fabric-core#Fabric",
+     dashed: true, label: "Microsoft Fabric workspace · sales_analytics_dev"}
+  - {id: lh, type: group, x: 296, y: 256, w: 824, h: 392, icon: "lib:fabric-artifacts#Lakehouse", iconSize: 36,
+     color: "#0F766E", fill: "#FFFFFF", dashed: false,
+     label: [{text: lh_sales, size: 13, weight: 700}, "Lakehouse · OneLake (Delta)"]}
+
+  # --- medallion zones (main flow row: y centre 472)
+  - {id: bronze, type: zone, x: 320, y: 336, w: 168, h: 272, title: Bronze, subtitle: "raw files · Files/bronze",
+     color: "#B4672C", headerFill: "#F8E7D8", fill: "#FFFBF7",
+     items: [customers.csv, products.csv, stores.csv, "orders_*.json (×12)"],
+     footer: ["CSV + JSON as delivered,", "messy strings kept"]}
+  - {id: silver, type: zone, x: 624, y: 336, w: 168, h: 272, title: Silver, subtitle: cleansed Delta tables,
+     color: "#64748B", headerFill: "#E7ECF2", fill: "#FBFCFD",
+     items: [silver_customers, silver_products, silver_stores, silver_orders],
+     footer: ["dedupe · trim · cast", "orphan / null asserts"]}
+  - {id: gold, type: zone, x: 928, y: 336, w: 168, h: 272, title: Gold, subtitle: star schema (Delta),
+     color: "#B88A00", headerFill: "#FBEFC4", fill: "#FFFDF5",
+     items: [gold_fact_sales, gold_dim_customer, gold_dim_product, gold_dim_store, gold_dim_date],
+     footer: ["surrogate keys", "key + revenue tie-out asserts"]}
+
+  - {id: nb1, type: icon, icon: "lib:fabric-artifacts#Notebook", cx: 560, cy: 472, size: 44,
+     label: [nb_bronze_to_silver, PySpark notebook]}
+  - {id: nb2, type: icon, icon: "lib:fabric-artifacts#Notebook", cx: 864, cy: 472, size: 44,
+     label: [nb_silver_to_gold, PySpark notebook]}
+
+  # --- orchestration band (above the flow)
+  - {id: pl, type: icon, icon: "lib:fabric-artifacts#Pipeline", cx: 712, cy: 172, size: 44, labelPos: right,
+     label: [{text: pl_sales_batch_daily, size: 12, weight: 700}, "Data pipeline · daily 02:00 UTC · retry 1"]}
+  - {id: alert, type: box, x: 380, y: 148, w: 168, h: 48, color: "#DC2626", fill: "#FEF2F2",
+     label: [{text: Failure alert, size: 12, weight: 700, color: "#DC2626"}, "Office 365 email · alert_email"]}
+
+  # --- serving (right of the flow)
+  - {id: sm, type: icon, icon: "lib:fabric-artifacts#Semantic Model", cx: 1200, cy: 472, size: 48,
+     label: [sm_sales_analytics, "Semantic model · Direct Lake", 10 DAX measures]}
+  - {id: rpt, type: icon, icon: "lib:fabric-artifacts#Power BI Report", cx: 1360, cy: 472, size: 48,
+     label: [rpt_sales_overview, Power BI report (PBIR), "Sales · Store performance"]}
+  - {id: users, type: icon, icon: "lib:fabric-core#Users", cx: 1530, cy: 472, size: 48,
+     label: [Business users, "sales · store managers"]}
+
+  # --- source (left of the flow)
+  - {id: gen, type: box, x: 32, y: 424, w: 168, h: 96,
+     label: [Store POS + web shop, {text: nightly exports, mono: true}, 120 stores, "orders · customers · products"]}
+
+  # --- DevOps band (below)
+  - {id: repo, type: box, x: 440, y: 712, w: 420, h: 64,
+     label: [GitHub repository, "Fabric items as code: notebooks · pipeline JSON · TMDL model · PBIR report"]}
+  - {id: ci, type: box, x: 936, y: 712, w: 300, h: 64,
+     label: [GitHub Actions CI, "repo quality checks · notebook unit tests"]}
+
+edges:
+  - {from: gen, to: bronze, toSide: left, label: upload, labelAt: [236, 460]}
+  - {from: bronze, to: nb1}
+  - {from: nb1, to: silver}
+  - {from: silver, to: nb2}
+  - {from: nb2, to: gold}
+  - {from: gold, to: sm}
+  - {from: sm, to: rpt, label: live, labelAt: [1280, 458]}
+  - {from: rpt, to: users}
+  - {from: pl, to: nb1, kind: control, fromSide: bottom, fromSlot: 0.25, toSide: top, via: [[701, 228], [560, 228]],
+     label: "① run", labelAt: [600, 218]}
+  - {from: pl, to: nb2, kind: control, fromSide: bottom, fromSlot: 0.75, toSide: top, via: [[723, 228], [864, 228]],
+     label: "② run on success", labelAt: [810, 218]}
+  - {from: pl, to: alert, kind: alert, fromSide: left, toSide: right, label: on failure, labelAt: [616, 162]}
+  - {from: ws, to: repo, kind: sync, fromSide: bottom, fromSlot: 0.3171, toSide: top, toSlot: 0.5,
+     label: [Fabric Git integration, commit ⇄ update], labelAt: [722, 692]}
+  - {from: repo, to: ci, kind: deploy, label: push / PR, labelAt: [898, 734]}
+
+legend:
+  x: 40
+  y: 712
+  labels: {data: Data flow, control: Orchestration (pipeline runs notebook), alert: Failure alert, sync: Git sync, deploy: CI trigger}

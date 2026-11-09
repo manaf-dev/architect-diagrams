@@ -1,0 +1,51 @@
+# AWS serverless order pipeline using native draw.io AWS stencils (stencil:aws4/...).
+# Build:  python scripts/archdiagram.py examples/aws-serverless.yaml --out-dir out
+# Look:   python scripts/render.py out/aws-serverless.drawio out/aws-serverless.png   (stencils need draw.io's renderer)
+canvas: {width: 1480, height: 760}
+title: Orders platform — AWS serverless reference architecture
+subtitle: API-driven order intake, event fan-out, and an analytics lake — all managed services, no servers to patch
+credits: "Icons: AWS Architecture Icons via draw.io (mxgraph.aws4)"
+
+elements:
+  - {id: users, type: icon, icon: "stencil:aws4/Users", cx: 88, cy: 360, size: 52, label: [Customers, web + mobile]}
+
+  - {id: cloud, type: group, x: 176, y: 104, w: 1264, h: 520, label: "AWS account · eu-west-1", color: "#232F3E", fill: "#F8FAFC"}
+
+  # edge + API (main row y = 360)
+  - {id: cf, type: icon, icon: "stencil:aws4/CloudFront", cx: 264, cy: 360, size: 52, label: [CloudFront, CDN + WAF]}
+  - {id: apigw, type: icon, icon: "stencil:aws4/API Gateway", cx: 416, cy: 360, size: 52, label: [API Gateway, REST /orders]}
+  - {id: auth, type: icon, icon: "stencil:aws4/Cognito", cx: 416, cy: 200, size: 52, labelPos: right, label: [Cognito, user pools · JWT]}
+  - {id: fn, type: icon, icon: "stencil:aws4/Lambda", cx: 576, cy: 360, size: 52, labelPos: above, label: [create-order, Lambda · Python 3.12]}
+  - {id: ddb, type: icon, icon: "stencil:aws4/DynamoDB", cx: 576, cy: 520, size: 52, labelPos: right, label: [orders table, DynamoDB · on-demand]}
+  - {id: bus, type: icon, icon: "stencil:aws4/EventBridge", cx: 744, cy: 360, size: 52, label: [orders bus, EventBridge]}
+
+  # consumers
+  - {id: sfn, type: icon, icon: "stencil:aws4/Step Functions", cx: 920, cy: 200, size: 52, labelPos: right, label: [fulfilment, Step Functions]}
+  - {id: sqs, type: icon, icon: "stencil:aws4/Simple Queue Service", cx: 920, cy: 360, size: 52, label: [notifications, SQS + DLQ]}
+  - {id: notify, type: icon, icon: "stencil:aws4/Lambda", cx: 1072, cy: 360, size: 52, label: [send-email, Lambda]}
+  - {id: ses, type: icon, icon: "stencil:aws4/Simple Email Service", cx: 1224, cy: 360, size: 52, label: [SES, transactional email]}
+
+  # analytics
+  - {id: fh, type: icon, icon: "stencil:aws4/Data Firehose", cx: 920, cy: 520, size: 52, label: [Firehose, batch to Parquet]}
+  - {id: s3, type: icon, icon: "stencil:aws4/Simple Storage Service (S3)", cx: 1072, cy: 520, size: 52, label: [orders lake, S3 · Parquet]}
+  - {id: athena, type: icon, icon: "stencil:aws4/Athena", cx: 1224, cy: 520, size: 52, label: [Athena, ad-hoc SQL]}
+
+  - {id: ops, type: box, x: 176, y: 664, w: 520, h: 56, color: "#475569",
+     label: [Observability, "CloudWatch logs + metrics · X-Ray traces · alarms → on-call"]}
+
+edges:
+  - {from: users, to: cf, label: HTTPS, labelAt: [144, 348]}
+  - {from: cf, to: apigw}
+  - {from: apigw, to: auth, kind: control, label: authorize, fromSide: top, toSide: bottom}
+  - {from: apigw, to: fn}
+  - {from: fn, to: ddb, label: put order, fromSide: bottom, toSide: top}
+  - {from: fn, to: bus, kind: async, label: OrderCreated}
+  - {from: bus, to: sfn, kind: async, fromSide: right, fromSlot: 0.25, toSide: left}
+  - {from: bus, to: sqs, kind: async, fromSide: right, fromSlot: 0.5, toSide: left}
+  - {from: bus, to: fh, kind: async, fromSide: right, fromSlot: 0.75, toSide: left}
+  - {from: sqs, to: notify}
+  - {from: notify, to: ses}
+  - {from: fh, to: s3}
+  - {from: s3, to: athena}
+
+legend: {x: 760, y: 656, labels: {async: Event (async)}}

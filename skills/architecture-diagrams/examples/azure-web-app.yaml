@@ -1,0 +1,85 @@
+# Customer portal on Azure — architecture for the docs.
+# Build: python scripts/archdiagram.py examples/azure-web-app.yaml --out-dir out
+# Look:  python scripts/render.py out/azure-web-app.svg out/azure-web-app.png   (all icons embedded -> SVG is final)
+#
+# Grid plan
+#   columns (cx): users 96 | front door 312 | web app 600 | API 840 | data/secrets 1120
+#   rows (cy):    identity 200 | KV 240 | main row 400 | WAF / blob 544-560 | App Insights 616 | GitHub 800
+#   main-row captions sit ABOVE the icons: their bottom faces carry telemetry + deploy edges.
+# Accepted lint item: Front Door telemetry crosses the web-app deploy line at a right angle in open space
+#   (App Insights is inside Azure, GitHub Actions outside, and both feed the app tier from below).
+canvas: {width: 1440, height: 880}
+title: Customer portal — Azure architecture
+subtitle: Entra ID sign-in → Front Door + WAF → App Service web app → Functions API → Azure SQL + Blob Storage, secrets from Key Vault
+credits: "Icons: Microsoft Azure architecture icons (via draw.io) · GitHub Actions logo: Simple Icons (CC0)"
+
+elements:
+  # --- boundaries
+  - {id: azure, type: group, x: 176, y: 104, w: 1200, h: 624, color: "#0078D4", fill: "#F8FBFF", dashed: false,
+     label: Microsoft Azure · customer portal}
+  - {id: edge, type: group, x: 216, y: 264, w: 192, h: 360, color: "#7FB2E5", fill: "#FFFFFF", dashed: false,
+     label: [{text: Global edge, size: 13, weight: 700}]}
+  - {id: region, type: group, x: 472, y: 160, w: 880, h: 552, color: "#7FB2E5", fill: "#FFFFFF", dashed: false,
+     label: [{text: Azure region, size: 13, weight: 700}]}
+
+  # --- people
+  - {id: users, type: icon, icon: "drawio:azure2/identity/Users.svg", cx: 96, cy: 400, size: 48,
+     label: [Customers, web browser]}
+
+  # --- identity (tenant level)
+  - {id: entra, type: icon, icon: "drawio:azure2/other/Entra_Identity.svg", cx: 312, cy: 200, size: 48, labelPos: right,
+     label: [Microsoft Entra ID, "sign-in · OIDC tokens"]}
+
+  # --- global edge
+  - {id: afd, type: icon, icon: "drawio:azure2/networking/Front_Doors.svg", cx: 312, cy: 400, size: 48, labelPos: above,
+     label: [Azure Front Door, "global entry · TLS"]}
+  - {id: waf, type: icon, icon: "drawio:azure2/networking/Web_Application_Firewall_Policies_WAF.svg", cx: 312, cy: 544, size: 48,
+     label: [WAF policy, attached to Front Door]}
+
+  # --- application (main row y = 400)
+  - {id: web, type: icon, icon: "drawio:azure2/app_services/App_Services.svg", cx: 600, cy: 400, size: 48, labelPos: above,
+     label: [Portal web app, App Service]}
+  - {id: api, type: icon, icon: "drawio:azure2/compute/Function_Apps.svg", cx: 840, cy: 400, size: 48, labelPos: above,
+     label: [Portal API, Azure Functions · HTTP]}
+
+  # --- data + secrets
+  - {id: kv, type: icon, icon: "drawio:azure2/security/Key_Vaults.svg", cx: 1120, cy: 240, size: 48, labelPos: right,
+     label: [Key Vault, app secrets]}
+  - {id: sql, type: icon, icon: "drawio:azure2/databases/SQL_Database.svg", cx: 1120, cy: 400, size: 48, labelPos: right,
+     label: [Azure SQL Database, portal data]}
+  - {id: blob, type: icon, icon: "drawio:azure2/storage/Storage_Accounts.svg", cx: 1120, cy: 560, size: 48, labelPos: right,
+     label: [Blob Storage, customer uploads]}
+
+  # --- observability
+  - {id: ai, type: icon, icon: "drawio:azure2/devops/Application_Insights.svg", cx: 720, cy: 616, size: 48,
+     label: [Application Insights, "logs · metrics · traces"]}
+
+  # --- delivery (outside Azure)
+  - {id: gha, type: icon, icon: simpleicons:githubactions, cx: 720, cy: 800, size: 48,
+     label: [GitHub Actions, build + deploy workflows]}
+
+edges:
+  # main request path
+  - {from: users, to: afd, label: HTTPS, labelAt: [152, 388]}
+  - {from: afd, to: web}
+  - {from: web, to: api, label: API calls, labelAt: [744, 416]}
+  - {from: api, to: sql, label: read / write, labelAt: [1008, 388]}
+  - {from: api, to: blob, fromSide: right, fromSlot: 0.75, toSide: left, via: [[912, 412], [912, 560]], label: uploads, labelAt: [1000, 548]}
+
+  # identity, security, secrets
+  - {from: users, to: entra, kind: control, fromSide: top, toSide: left, label: sign in, labelAt: [128, 296]}
+  - {from: afd, to: waf, kind: control, fromSide: bottom, toSide: top, label: inspect}
+  - {from: api, to: kv, kind: control, fromSide: right, fromSlot: 0.25, toSide: left, toSlot: 0.75, via: [[912, 388], [912, 252]]}
+  - {from: web, to: kv, kind: control, fromSide: right, fromSlot: 0.25, toSide: left, toSlot: 0.25,
+     via: [[672, 388], [672, 228]], label: secrets, labelAt: [800, 216]}
+
+  # telemetry
+  - {from: afd, to: ai, kind: telemetry, fromSide: right, fromSlot: 0.75, toSide: left, toSlot: 0.75, via: [[440, 412], [440, 628]]}
+  - {from: web, to: ai, kind: telemetry, fromSide: bottom, fromSlot: 0.75, toSide: left, toSlot: 0.25}
+  - {from: api, to: ai, kind: telemetry, fromSide: bottom, fromSlot: 0.25, toSide: right, toSlot: 0.25}
+
+  # deployment
+  - {from: gha, to: web, kind: deploy, fromSide: left, toSide: bottom, toSlot: 0.25, label: deploy, labelAt: [640, 784]}
+  - {from: gha, to: api, kind: deploy, fromSide: right, toSide: bottom, toSlot: 0.75, label: deploy, labelAt: [800, 784]}
+
+legend: {x: 40, y: 752, labels: {data: Request / data flow, control: "Identity · security · secrets"}}

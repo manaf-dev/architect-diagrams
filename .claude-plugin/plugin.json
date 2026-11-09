@@ -1,0 +1,10 @@
+{
+  "name": "architecture-diagrams",
+  "version": "1.0.0",
+  "description": "Professional architecture diagrams with real AWS, Azure, GCP, Kubernetes, Microsoft Fabric and SaaS icons, as editable draw.io files plus SVG/PNG images. Icons are resolved from catalogs (never guessed), layouts are linted, and every diagram is rendered and reviewed before delivery.",
+  "author": { "name": "Manaf", "url": "https://github.com/manaf-dev" },
+  "homepage": "https://github.com/manaf-dev/architect-diagrams",
+  "repository": "https://github.com/manaf-dev/architect-diagrams",
+  "license": "MIT",
+  "keywords": ["architecture", "diagrams", "draw.io", "aws", "azure", "gcp", "kubernetes", "microsoft-fabric", "icons", "skill"]
+}

@@ -1,0 +1,31 @@
+name: Validate skill
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Resolve sample icons from every source
+        working-directory: skills/architecture-diagrams
+        run: |
+          python scripts/icons.py show stencil:aws4/Lambda
+          python scripts/icons.py show "stencil:gcp2/Cloud Run"
+          python scripts/icons.py show drawio:azure2/compute/Function_Apps.svg
+          python scripts/icons.py show "lib:fabric-artifacts#Lakehouse"
+          python scripts/icons.py show simpleicons:githubactions
+      - name: Build and lint every example
+        working-directory: skills/architecture-diagrams
+        run: |
+          for spec in examples/*.yaml; do
+            echo "== $spec"
+            python scripts/archdiagram.py "$spec" --out-dir "$RUNNER_TEMP/out"
+          done
