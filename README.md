@@ -39,9 +39,31 @@ claude plugin install architecture-diagrams@manaf-dev-skills
 npx skills add manaf-dev/architect-diagrams
 ```
 
+Claude Code installs for all your projects by default; `npx skills` installs into the current project by
+default. See [Install for one project only](#install-for-one-project-only) to change that.
+
 Then ask:
 
 > "Draw the architecture of this repo for the README, with real Azure icons."
+
+### Install for one project only
+
+**Claude Code:** run both commands from the project folder with a scope:
+
+```bash
+claude plugin marketplace add manaf-dev/architect-diagrams --scope project
+claude plugin install architecture-diagrams@manaf-dev-skills --scope project
+```
+
+`--scope project` writes to `.claude/settings.json`; commit it and teammates who open the repo in Claude Code
+are offered the skill too. Use `--scope local` instead to keep it to yourself; that writes to
+`.claude/settings.local.json`, which stays out of git.
+
+**Other agents:** `npx skills add manaf-dev/architect-diagrams` already installs into the current project.
+Add `-g` only if you want it everywhere.
+
+**Manual:** copy `skills/architecture-diagrams/` into the project's own skills folder, such as
+`.claude/skills/` for Claude Code or `.agents/skills/` for Codex.
 
 <details>
 <summary>More install options</summary>
@@ -59,8 +81,8 @@ step: `/plugin install architecture-diagrams --marketplace manaf-dev/architect-d
 `manaf-dev/architect-diagrams`. The design guidance works there, but the scripts need an agent that can run
 Python, such as Claude Code.
 
-**Manual:** copy `skills/architecture-diagrams/` into your agent's skills folder, for example
-`~/.claude/skills/` for Claude Code or `~/.agents/skills/` for Codex.
+**Manual, for all projects:** copy `skills/architecture-diagrams/` into your agent's user skills folder,
+for example `~/.claude/skills/` for Claude Code or `~/.agents/skills/` for Codex.
 
 </details>
 
