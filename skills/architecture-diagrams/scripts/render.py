@@ -104,7 +104,9 @@ def render_drawio(src: Path, out: Path, scale: float, engine: str) -> None:
     with tempfile.TemporaryDirectory(prefix="archdiagram-page-") as tmp:
         page_file = Path(tmp) / "view.html"
         page_file.write_text(page, encoding="utf-8")
-        screenshot(page_file.as_uri(), out, w, h, scale, wait_ms=20000)
+        # The viewer draws the diagram ~24 px lower than its page origin; give it headroom so the
+        # bottom row (legend, credits) is not cropped.
+        screenshot(page_file.as_uri(), out, w, h + 48, scale, wait_ms=20000)
     print(f"rendered with draw.io viewer -> {out}")
 
 

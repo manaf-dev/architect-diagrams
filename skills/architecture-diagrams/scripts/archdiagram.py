@@ -422,7 +422,7 @@ class Diagram:
     # ----------------------------------------------------------------------- draw.io
     def to_drawio(self) -> str:
         t = self.theme
-        font = t["font"].split(",")[0]
+        font = t["font"]  # full stack, so systems without the first font fall back to sans-serif, not serif
         common = f"html=1;whiteSpace=wrap;fontFamily={font};"
         # invisible, locked canvas frame: keeps margins when draw.io crops exports/viewers to content bounds
         cells = [f'<mxCell id="_canvas" value="" style="rounded=0;fillColor=none;strokeColor=none;locked=1;selectable=0;" '

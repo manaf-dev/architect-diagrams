@@ -1,0 +1,71 @@
+# Web shop on Kubernetes, deployed with GitOps — native draw.io Kubernetes stencils plus brand logos.
+# Build: python scripts/archdiagram.py examples/kubernetes-app.yaml --out-dir out
+# Look:  python scripts/render.py out/kubernetes-app.drawio out/kubernetes-app.png   (stencils need draw.io's renderer)
+#
+# Grid plan
+#   columns (cx): users 88 | ingress 320 | web 512 | api 704 | data 912 | volume 1104 | Argo CD + Git 400
+#   rows (cy):    control 232 | main row 400 | ops namespaces 608 | Git 776
+#   ops edges attach to the bottom of the shop namespace, so main-row captions stay below their icons.
+canvas: {width: 1280, height: 880}
+title: Web shop — Kubernetes with GitOps
+subtitle: Ingress → web → API → PostgreSQL + Redis, autoscaled, scraped by Prometheus and deployed by Argo CD from Git
+credits: "Icons: Kubernetes icons via draw.io · brand logos: Simple Icons (CC0)"
+
+elements:
+  # --- boundaries
+  - {id: cluster, type: group, x: 176, y: 104, w: 1064, h: 600, icon: "stencil:kubernetes/Control Plane", iconSize: 30,
+     color: "#326CE5", fill: "#F7FAFF", label: "Kubernetes cluster · prod"}
+  - {id: shop, type: group, x: 232, y: 152, w: 960, h: 344, color: "#7FA6EE", fill: "#FFFFFF", dashed: true,
+     label: [{text: "namespace: shop", size: 13, weight: 700}]}
+  - {id: argons, type: group, x: 232, y: 528, w: 240, h: 152, color: "#7FA6EE", fill: "#FFFFFF", dashed: true,
+     label: [{text: "namespace: argocd", size: 13, weight: 700}]}
+  - {id: monns, type: group, x: 504, y: 528, w: 472, h: 152, color: "#7FA6EE", fill: "#FFFFFF", dashed: true,
+     label: [{text: "namespace: monitoring", size: 13, weight: 700}]}
+
+  # --- people
+  - {id: users, type: icon, icon: "stencil:kubernetes/User", cx: 88, cy: 400, size: 48, label: [Shoppers, web + mobile]}
+
+  # --- control row
+  - {id: secret, type: icon, icon: "stencil:kubernetes/Secret", cx: 512, cy: 232, size: 48, labelPos: right,
+     label: [app-secrets, Secret · DB creds]}
+  - {id: hpa, type: icon, icon: "stencil:kubernetes/HPA", cx: 704, cy: 232, size: 48, labelPos: right,
+     label: [api-hpa, "HPA · 3–10 pods"]}
+  - {id: redis, type: icon, icon: simpleicons:redis, cx: 912, cy: 232, size: 48, labelPos: right,
+     label: [cache, Redis · StatefulSet]}
+
+  # --- main row (y = 400)
+  - {id: ing, type: icon, icon: "stencil:kubernetes/ING", cx: 320, cy: 400, size: 48, label: [shop-ingress, "Ingress · TLS"]}
+  - {id: web, type: icon, icon: "stencil:kubernetes/Deploy", cx: 512, cy: 400, size: 48, label: [web, "Deployment · Next.js"]}
+  - {id: api, type: icon, icon: "stencil:kubernetes/Deploy", cx: 704, cy: 400, size: 48, label: [orders-api, "Deployment · Go"]}
+  - {id: db, type: icon, icon: simpleicons:postgresql, cx: 912, cy: 400, size: 48, label: [orders-db, PostgreSQL · StatefulSet]}
+  - {id: pvc, type: icon, icon: "stencil:kubernetes/PVC", cx: 1104, cy: 400, size: 48, label: [pgdata, "PVC · 50 GiB"]}
+
+  # --- ops namespaces
+  - {id: argo, type: icon, icon: simpleicons:argo, cx: 400, cy: 608, size: 44, labelPos: left, label: [Argo CD, GitOps]}
+  - {id: prom, type: icon, icon: simpleicons:prometheus, cx: 704, cy: 608, size: 44, labelPos: left, label: [Prometheus, metrics + alerts]}
+  - {id: graf, type: icon, icon: simpleicons:grafana, cx: 880, cy: 608, size: 44, label: [Grafana, dashboards]}
+
+  # --- Git (outside the cluster)
+  - {id: git, type: icon, icon: simpleicons:github, cx: 400, cy: 776, size: 44, labelPos: right,
+     label: [shop-gitops, Helm charts + values]}
+
+edges:
+  # main request path
+  - {from: users, to: ing, label: HTTPS, labelAt: [144, 388]}
+  - {from: ing, to: web}
+  - {from: web, to: api, label: REST, labelAt: [608, 388]}
+  - {from: api, to: db, label: SQL, labelAt: [808, 412]}
+  - {from: db, to: pvc}
+  - {from: api, to: redis, fromSide: right, fromSlot: 0.25, toSide: left, via: [[840, 388], [840, 232]], label: cache, labelAt: [868, 316]}
+
+  # control
+  - {from: secret, to: web, kind: control, fromSide: bottom, toSide: top, label: env, labelAt: [496, 316]}
+  - {from: hpa, to: api, kind: control, fromSide: bottom, toSide: top, label: scales, labelAt: [680, 316]}
+
+  # operations
+  - {from: argo, to: shop, kind: deploy, fromSide: top, toSide: bottom, toSlot: 0.175, label: sync, labelAt: [424, 512]}
+  - {from: prom, to: shop, kind: telemetry, fromSide: top, toSide: bottom, toSlot: 0.4917, label: scrape, labelAt: [736, 512]}
+  - {from: prom, to: graf}
+  - {from: git, to: argo, kind: sync, fromSide: top, toSide: bottom, label: pull, labelAt: [376, 744]}
+
+legend: {x: 640, y: 728, labels: {data: Request / data flow, control: "Config · scaling", telemetry: Metrics scrape, deploy: GitOps sync, sync: Git pull}}

@@ -1,82 +1,100 @@
-# architecture-diagrams — an agent skill
+# Architecture Diagrams
 
-Teach your AI coding agent to draw **professional architecture diagrams with real vendor icons**: AWS, Azure,
-Google Cloud, Kubernetes, Microsoft Fabric / Power BI, and 3,000+ SaaS and open-source logos. Every diagram
-comes out as an **editable draw.io file** plus an **SVG or PNG** ready for your README, docs or slides.
+**An agent skill that makes your coding agent draw architecture diagrams you'd actually put in a README.**
 
-![Microsoft Fabric medallion lakehouse](docs/gallery/fabric-medallion.svg)
+Ask in plain words and get a clean diagram with real AWS, Azure, Google Cloud, Kubernetes, Microsoft Fabric
+and SaaS icons. You get an editable **draw.io** file plus an **SVG or PNG** ready for docs and slides.
 
-Most agents produce diagrams with guessed icon names, overlapping labels and spaghetti arrows. This skill
-fixes that with four things:
+Works with Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode, Windsurf and other agents
+that support skills.
 
-- **Real icons, never guessed.** It looks every icon up in a catalog, and an icon that doesn't exist fails
-  loudly. The catalogs include 952 AWS, 363 GCP and 78 Kubernetes icons, 1,746 draw.io SVGs (all Azure, IBM and
-  SAP icons among them), the Microsoft Fabric pack and Simple Icons brand logos.
-- **A planned layout.** One straight main flow, with control above and operations below, nested boundaries and
-  an 8 px grid. It follows written design rules, not an auto-layout guess.
-- **Automatic layout checks.** The checks catch overlaps, lines cutting through captions, labels on borders,
-  crossing lines, cramped arrowheads and text that doesn't fit.
-- **Render and look.** The agent renders a PNG and reviews it before handing the diagram over.
+![AWS serverless reference architecture, drawn by the skill](docs/gallery/aws-serverless.png)
 
-| AWS (native draw.io stencils) | Azure (embedded SVG icons) |
-|---|---|
-| ![AWS serverless](docs/gallery/aws-serverless.png) | ![Azure web app](docs/gallery/azure-web-app.svg) |
+## Why
 
-## Install
+Ask an agent for an architecture diagram without this skill and you usually get guessed icon names, labels
+on top of each other and arrows going everywhere. This skill gives it a method:
 
-### Claude Code
+- **Real icons, never guessed.** Every icon is looked up in a catalog, and a missing icon fails loudly
+  instead of turning into a blank box. 952 AWS, 363 GCP and 78 Kubernetes icons, all of Azure, IBM and SAP,
+  the Microsoft Fabric pack and 3,000+ brand logos.
+- **A planned layout.** One clear main flow, control above, operations below, nested boundaries, all on
+  an 8 px grid. The agent follows written design rules instead of hoping an auto-layout works out.
+- **Automatic checks.** Overlaps, lines through captions, labels on borders, crossing lines, cramped
+  arrowheads and text that doesn't fit are all caught before you see the diagram.
+- **The agent looks at it.** It renders a PNG and reviews it before handing the diagram over.
+
+## Quick start
+
+**Claude Code**
 
 ```bash
 claude plugin marketplace add manaf-dev/architect-diagrams
 claude plugin install architecture-diagrams@manaf-dev-skills
 ```
 
-Inside a Claude Code session, use `/plugin marketplace add manaf-dev/architect-diagrams`, then
-`/plugin install architecture-diagrams@manaf-dev-skills`. Claude Code v2.1.275 and later can do it in one step:
-`/plugin install architecture-diagrams --marketplace manaf-dev/architect-diagrams`.
-
-To update, run `claude plugin marketplace update manaf-dev-skills` and then
-`claude plugin update architecture-diagrams@manaf-dev-skills`.
-
-### Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode, Windsurf and others
+**Codex, Cursor, Copilot, Gemini CLI, OpenCode, Windsurf and others**
 
 ```bash
-npx skills add manaf-dev/architect-diagrams          # choose agents interactively
-npx skills add manaf-dev/architect-diagrams -g       # install for all your projects
-npx skills add manaf-dev/architect-diagrams -a codex # target one agent
+npx skills add manaf-dev/architect-diagrams
 ```
 
-### claude.ai / Claude desktop
-
-Go to **Customize → Plugins → Add → Add marketplace** and enter `manaf-dev/architect-diagrams`. The skill's
-guidance works there too. Its scripts need an agent that can run Python, such as Claude Code or the agents above.
-
-### Manual
-
-Copy `skills/architecture-diagrams/` into your agent's skills folder, for example `~/.claude/skills/` for
-Claude Code or `~/.agents/skills/` for Codex.
-
-## Use
-
-Ask in plain words. The skill triggers on architecture-diagram requests:
+Then ask:
 
 > "Draw the architecture of this repo for the README, with real Azure icons."
+
+<details>
+<summary>More install options</summary>
+
+**Inside a Claude Code session:** `/plugin marketplace add manaf-dev/architect-diagrams`, then
+`/plugin install architecture-diagrams@manaf-dev-skills`. Claude Code v2.1.275 and later can do both in one
+step: `/plugin install architecture-diagrams --marketplace manaf-dev/architect-diagrams`.
+
+**Update in Claude Code:** `claude plugin marketplace update manaf-dev-skills`, then
+`claude plugin update architecture-diagrams@manaf-dev-skills`.
+
+**`npx skills` options:** add `-g` to install for all your projects, or `-a codex` to target one agent.
+
+**claude.ai / Claude desktop:** go to **Customize → Plugins → Add → Add marketplace** and enter
+`manaf-dev/architect-diagrams`. The design guidance works there, but the scripts need an agent that can run
+Python, such as Claude Code.
+
+**Manual:** copy `skills/architecture-diagrams/` into your agent's skills folder, for example
+`~/.claude/skills/` for Claude Code or `~/.agents/skills/` for Codex.
+
+</details>
+
+## Gallery
+
+| Kubernetes with GitOps (native stencils + brand logos) | Azure web app (embedded SVG icons) |
+|---|---|
+| ![Kubernetes web shop with GitOps](docs/gallery/kubernetes-app.png) | ![Azure web app](docs/gallery/azure-web-app.svg) |
+
+The specs behind every gallery image are in
+[`skills/architecture-diagrams/examples/`](skills/architecture-diagrams/examples/).
+
+## What to ask for
+
+The skill triggers on any architecture-diagram request. Some examples:
+
+> "Make a reference architecture: API Gateway → Lambda → DynamoDB, with EventBridge fan-out to SQS and Step Functions."
 >
-> "Make a reference architecture: API Gateway → Lambda → DynamoDB, EventBridge fan-out to SQS and Step Functions."
+> "Diagram our data platform: Fabric notebooks, a pipeline, a Direct Lake semantic model and a Power BI report."
 >
-> "Diagram our Fabric medallion pipeline: notebooks, pipeline, Direct Lake semantic model, Power BI report."
+> "Read the Terraform in `infra/` and draw what it deploys."
 
 In Claude Code you can also call it directly with `/architecture-diagrams:architecture-diagrams`.
 
-The agent then:
-1. models your system, reading your IaC or code when it's available;
-2. resolves every icon;
-3. plans the grid and writes a short layout spec;
-4. builds and lints the diagram;
-5. renders it and looks at it;
-6. delivers `name.drawio` plus `name.svg` or `name.png`, keeping the spec so later edits are easy.
+## How it works
 
-The scripts also work by hand:
+1. **Model the system.** Components, boundaries and flows, read from your IaC or code when it's there.
+2. **Resolve every icon** from the bundled catalogs.
+3. **Plan the grid** and write a short YAML layout spec.
+4. **Build and lint** the diagram.
+5. **Render and look** at a PNG, then fix what's off.
+6. **Deliver** `name.drawio` plus `name.svg` or `name.png`. The spec is kept, so later edits are quick.
+
+You can run the scripts yourself too:
 
 ```bash
 python skills/architecture-diagrams/scripts/icons.py search "api gateway" --set aws4
@@ -86,15 +104,17 @@ python skills/architecture-diagrams/scripts/render.py docs/architecture/my-arch.
 
 ## Requirements
 
-- **Python 3.10+.** Add PyYAML (`pip install pyyaml`) for YAML specs; JSON specs need nothing extra.
-- **Edge, Chrome or Chromium** for PNG previews.
-- **For native AWS and Kubernetes stencils:** draw.io Desktop (offline), or internet access so draw.io's
-  viewer script can render them.
+- **Python 3.10+.** YAML specs need PyYAML (`pip install pyyaml`); JSON specs need nothing extra.
+- **Chrome, Edge or Chromium** for PNG previews.
+- **Internet access while building.** Icons are downloaded the first time they're used, then cached.
+  Finished files have the icons embedded, except native AWS and Kubernetes stencils (next point).
+- **Native AWS and Kubernetes stencils** also need draw.io Desktop or internet access, so draw.io's viewer
+  can render them.
 
 ## Licence and credits
 
-The skill and its code are MIT-licensed. The icons and icon catalogs belong to their owners and keep their own
-terms: AWS, Microsoft, Google, the Kubernetes authors, draw.io (Apache-2.0), Simple Icons (CC0) and the
-[Microsoft Fabric icon pack](https://github.com/astrzala/FabricToolset) (MIT). See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Vendor icons may be used to depict those vendors' services
+The skill and its code are [MIT-licensed](LICENSE). Icons and icon catalogs belong to their owners and keep
+their own terms: AWS, Microsoft, Google, the Kubernetes authors, draw.io (Apache-2.0), Simple Icons (CC0)
+and the [Microsoft Fabric icon pack](https://github.com/astrzala/FabricToolset) (MIT). See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Vendor icons may be used to show those vendors' services
 in architecture diagrams. Don't modify them or imply endorsement.

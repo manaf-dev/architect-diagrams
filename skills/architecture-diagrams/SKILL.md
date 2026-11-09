@@ -81,7 +81,8 @@ Sketch the grid (columns x-positions, row y-positions) before writing coordinate
 
 YAML or JSON; full schema in `references/spec-format.md`. Start from the closest example:
 `examples/fabric-medallion.yaml` (nested boundaries, medallion zones, orchestration band, Git/CI band),
-`examples/aws-serverless.yaml` (native stencils, event fan-out, analytics lane) or
+`examples/aws-serverless.yaml` (native stencils, event fan-out, analytics lane),
+`examples/kubernetes-app.yaml` (cluster + namespaces, control row, ops namespaces, GitOps from outside) or
 `examples/azure-web-app.yaml` (identity, edge/WAF, secrets, telemetry and CI/CD around one busy main row).
 
 Element types: `group` (boundary), `zone` (layer card with header/items/footer), `icon`, `box`, `text`.
