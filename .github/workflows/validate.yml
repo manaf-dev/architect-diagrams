@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Skill folder carries the same licence files as the repo root
+        run: |
+          cmp LICENSE skills/architecture-diagrams/LICENSE
+          cmp THIRD_PARTY_NOTICES.md skills/architecture-diagrams/THIRD_PARTY_NOTICES.md
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

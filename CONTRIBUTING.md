@@ -56,3 +56,5 @@ Examples live in `skills/architecture-diagrams/examples/` and double as starting
   catalogs only index them.
 - A new icon source needs a licence that allows use in diagrams. Add it to
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and `references/icon-sources.md`.
+- `LICENSE` and `THIRD_PARTY_NOTICES.md` exist twice: at the repo root (for GitHub) and in
+  `skills/architecture-diagrams/` (so they travel with every install). Change both; CI checks they match.
