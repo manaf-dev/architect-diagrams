@@ -110,7 +110,8 @@ In Claude Code you can also call it directly with `/architecture-diagrams:archit
 ## How it works
 
 1. **Model the system.** Components, boundaries and flows, read from your IaC or code when it's there.
-2. **Resolve every icon** from the bundled catalogs.
+2. **Resolve every icon** from the bundled catalogs. If a product's icon is missing, it asks you once whether
+   to look up the official logo, use a file you provide (handy for internal apps) or draw a labelled box.
 3. **Plan the grid** and write a short YAML layout spec.
 4. **Build and lint** the diagram.
 5. **Render and look** at a PNG, then fix what's off.

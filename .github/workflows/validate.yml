@@ -22,6 +22,13 @@ jobs:
           python scripts/icons.py show drawio:azure2/compute/Function_Apps.svg
           python scripts/icons.py show "lib:fabric-artifacts#Lakehouse"
           python scripts/icons.py show simpleicons:githubactions
+      - name: Fetch cleans unsafe SVGs
+        working-directory: skills/architecture-diagrams
+        run: |
+          printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" onload="alert(1)"><script>alert(2)</script><image href="https://example.com/x.png"/><rect width="4" height="4"/></svg>' > "$RUNNER_TEMP/evil.svg"
+          python scripts/icons.py fetch "$RUNNER_TEMP/evil.svg" --out "$RUNNER_TEMP/icons" --name evil
+          ! grep -Eiq 'script|onload|example\.com' "$RUNNER_TEMP/icons/evil.svg"
+          grep -q '<rect' "$RUNNER_TEMP/icons/evil.svg"
       - name: Build and lint every example
         working-directory: skills/architecture-diagrams
         run: |

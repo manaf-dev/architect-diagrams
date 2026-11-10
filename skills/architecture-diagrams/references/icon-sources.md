@@ -25,6 +25,41 @@ carry their own licence — keep the credit line. Brand logos identify products;
 
 ## When an icon doesn't exist
 
-Use a `box` with a clear name and type line (e.g. "Order service · Go on ECS"). A neutral box is always
-better than a misleading icon. For a vendor service missing from the catalogs, check whether the catalogs
-are stale (`icons.py build-catalogs`) before falling back.
+Ask the user once for all missing icons (SKILL.md step 2b): look the logo up online, use a file they give
+you, or draw a box. Before looking anything up, refresh the catalogs (`icons.py build-catalogs`); the
+product may simply be newer than the bundled Simple Icons list.
+
+**Where to look, in order**
+
+1. The vendor's own brand, press or media-kit page (often `/brand`, `/press`, `/media`).
+2. The vendor's GitHub organisation (avatar or a `brand`/`assets` repo).
+3. Wikimedia Commons, which records each file's licence and source.
+
+Not from image-search results, icon-pack sites or screenshots: they are often outdated, redrawn or
+mislabelled. Take the logo file's own URL (`.svg` preferred, `.png` at 256 px or more), not the page.
+
+**Saving it**
+
+```bash
+python scripts/icons.py fetch https://example.com/brand/logo.svg --out docs/architecture/icons --name acme-crm \
+    --relative-to docs/architecture
+# prints:  ref: svg:icons/acme-crm.svg   (paste into the spec; relative paths resolve from the spec's folder)
+```
+
+`fetch` accepts http(s) URLs and local files, and refuses web pages, files over 2 MB and anything that
+isn't SVG, PNG or JPEG. For SVGs it refuses DOCTYPE/ENTITY declarations and strips scripts,
+`foreignObject`, animations, `on*` handlers, external links and CSS imports, and editor metadata, then
+prints what it removed. `svg:` refs are cleaned the same way when a diagram is built. It warns about
+small raster logos. A user's own logo goes through the same command: it then lives in the project next
+to the spec.
+
+**Credit and use**
+
+Add the source URL of any logo taken from the web to the spec's `credits` line. Brand logos identify the
+product; keep them unmodified and in their own colours, and don't suggest endorsement. Internal logos
+belong to the user and need no credit.
+
+**Falling back to a box**
+
+When the user picks a box, or you can't ask, use a `box` with a clear name and type line (for example
+"Order service · Go on ECS"). A neutral box is always better than a misleading icon.
