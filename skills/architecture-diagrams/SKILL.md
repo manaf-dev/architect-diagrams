@@ -1,7 +1,7 @@
 ---
 name: architecture-diagrams
 description: Design and render professional, icon-accurate architecture diagrams — cloud (AWS, Azure, GCP), Kubernetes, data platforms (Microsoft Fabric, Power BI, Databricks, Snowflake), SaaS and on-prem — as an editable draw.io file plus an SVG/PNG ready for READMEs, docs and slides. Uses real vendor icons (never guessed), a planned grid layout, automatic layout linting and a render-and-look loop. Use this whenever the user asks to draw, design, diagram or visualise an architecture, solution design, system/infrastructure/data-platform/pipeline/deployment/network topology, "reference architecture", "architecture for the README", or wants a diagram with AWS/Azure/GCP/Fabric/vendor icons — even if they don't mention draw.io. Prefer it over generic diagram skills whenever vendor icons or a polished architecture picture are involved; for flowcharts, UML, ER or academic figures without vendor icons, a general-purpose diagram tool fits better.
-license: MIT (bundled icon catalogs and icons keep their own licences - see THIRD_PARTY_NOTICES.md in the repo)
+license: MIT (bundled icon catalogs and icons keep their own licences - see THIRD_PARTY_NOTICES.md next to this file)
 compatibility: Needs Python 3.10+ and a shell to run its scripts (Claude Code, Codex, Cursor, Gemini CLI and similar agents); PyYAML for YAML specs; Edge/Chrome/Chromium for PNG previews; draw.io Desktop or internet access to render native AWS/Kubernetes stencils.
 ---
 
