@@ -18,6 +18,8 @@ CLI:
   icons.py show <ref>                     resolve one reference and print what it becomes
   icons.py preview <ref> <ref>... [--out sheet.svg]   contact sheet to compare candidates side by side
   icons.py build-catalogs                 refresh bundled catalogs from github.com/jgraph/drawio
+  icons.py fetch <url|path> --out <dir> [--name NAME] [--relative-to SPEC_DIR]
+                                          save a logo into the project (SVGs cleaned) and print its svg: ref
 
 Stencil catalogs are parsed *statically* from draw.io's sidebar sources (no downloaded code is executed).
 Downloads are cached in ~/.cache/archdiagram.
@@ -29,10 +31,12 @@ import base64
 import hashlib
 import json
 import mimetypes
+import os
 import re
 import sys
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -384,7 +388,10 @@ def resolve(ref: str, aliases: dict | None = None) -> Icon:
         return Icon(ref, "image", entry["title"], svg_aspect(data), data_uri=to_data_uri(data, slug + ".svg"))
     if scheme == "svg":
         data = fetch(rest)
-        return Icon(ref, "image", Path(rest).stem, svg_aspect(data) if rest.lower().endswith(".svg") else 1.0,
+        is_svg = rest.lower().endswith(".svg") or data.lstrip()[:5] in (b"<?xml", b"<svg ")
+        if is_svg:  # never embed script-capable SVG from outside the bundled catalogs
+            data, _ = sanitize_svg(data)
+        return Icon(ref, "image", Path(rest).stem, svg_aspect(data) if is_svg else 1.0,
                     data_uri=to_data_uri(data, rest))
     if scheme == "style":
         return Icon(ref, "stencil", "", 1.0, style=rest)
@@ -460,6 +467,130 @@ def _search(q: list[str], set_name: str | None, limit: int, aliases: dict | None
     return [(r[1], r[2]) for r in results[:limit]]
 
 
+# --------------------------------------------------------------------------- safe SVG / logo intake
+
+SVG_NS, XLINK_NS = "http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink"
+ET.register_namespace("", SVG_NS)
+ET.register_namespace("xlink", XLINK_NS)
+# Elements that can run code, load other documents or rewrite attributes at runtime. A logo needs none of them.
+_UNSAFE_TAGS = {"script", "foreignObject", "iframe", "object", "embed", "handler", "listener",
+                "animate", "set", "animateMotion", "animateTransform", "audio", "video"}
+_UNSAFE_CSS = re.compile(r"@import|expression\s*\(|javascript:|url\(\s*[\"']?(?!#|data:image/)", re.I)
+MAX_ICON_BYTES = 2_000_000
+
+
+def _local(name: str) -> str:
+    return name.rsplit("}", 1)[-1]
+
+
+def _ns(name: str) -> str:
+    return name[1:].split("}", 1)[0] if name.startswith("{") else ""
+
+
+def sanitize_svg(data: bytes) -> tuple[bytes, list[str]]:
+    """Strip anything that can execute or reach out from an SVG; return the cleaned bytes and what was removed.
+
+    Removes scripts, foreignObject, embedded documents and animations; on* event handlers; links that are
+    not in-document (#id) or embedded images (data:image/...); CSS with @import, javascript: or external
+    url(); and editor metadata in foreign namespaces. Refuses DOCTYPE/ENTITY declarations outright.
+    """
+    text = data.decode("utf-8", "replace")
+    if re.search(r"<!DOCTYPE|<!ENTITY", text, re.I):
+        raise ValueError("SVG has a DOCTYPE/ENTITY declaration; refusing it (entity tricks can blow up or leak)")
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as e:
+        raise ValueError(f"not a well-formed SVG: {e}") from None
+    if _local(root.tag) != "svg":
+        raise ValueError(f"root element is <{_local(root.tag)}>, not <svg>")
+    removed: list[str] = []
+
+    def clean(el: ET.Element) -> None:
+        for child in list(el):
+            tag = _local(child.tag) if isinstance(child.tag, str) else ""
+            if not isinstance(child.tag, str):          # comments / processing instructions
+                el.remove(child)
+                continue
+            if tag in _UNSAFE_TAGS or _ns(child.tag) not in ("", SVG_NS):
+                el.remove(child)
+                removed.append(f"<{tag}>")
+                continue
+            if tag == "style" and child.text and _UNSAFE_CSS.search(child.text):
+                el.remove(child)
+                removed.append("<style> with external or script CSS")
+                continue
+            clean(child)
+        for name in list(el.attrib):
+            local, value = _local(name), el.attrib[name]
+            if local.lower().startswith("on"):
+                removed.append(f"{local}= handler")
+            elif local == "href" and not (value.startswith("#") or value.startswith("data:image/")):
+                removed.append(f"external link {value[:60]}")
+            elif local == "style" and _UNSAFE_CSS.search(value):
+                removed.append("style= with external or script CSS")
+            elif _ns(name) not in ("", SVG_NS, XLINK_NS, "http://www.w3.org/XML/1998/namespace"):
+                removed.append(f"foreign attribute {local}")
+            else:
+                continue
+            del el.attrib[name]
+
+    clean(root)
+    clean_bytes = ET.tostring(root, encoding="utf-8", xml_declaration=False)
+    return clean_bytes, removed
+
+
+def _sniff(data: bytes) -> str:
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    head = data[:2048].lstrip().lower()
+    if head.startswith(b"<?xml") or head.startswith(b"<svg") or (b"<svg" in head and b"<html" not in head):
+        return "svg"
+    if b"<html" in head or b"<!doctype html" in head:
+        raise ValueError("that address returned a web page, not an image - open the page and use the logo file's own URL")
+    raise ValueError("not an SVG, PNG or JPEG file")
+
+
+def _raster_size(data: bytes, kind: str) -> tuple[int, int] | None:
+    if kind == "png" and len(data) >= 24:
+        return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    return None
+
+
+def fetch_icon(source: str, out_dir: Path, name: str | None = None) -> tuple[Path, list[str], list[str]]:
+    """Download (or copy) a logo into out_dir, cleaning SVGs. Returns (path, removed items, warnings)."""
+    if re.match(r"^https?://", source):
+        req = urllib.request.Request(source, headers={"User-Agent": "archdiagram-skill"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = r.read(MAX_ICON_BYTES + 1)
+    elif re.match(r"^[a-z][a-z0-9+.-]*:", source, re.I) and not re.match(r"^[a-z]:[\\/]", source, re.I):
+        raise ValueError("only http(s) URLs and local file paths are supported")
+    else:
+        data = Path(source).expanduser().read_bytes()
+    if len(data) > MAX_ICON_BYTES:
+        raise ValueError(f"file is over {MAX_ICON_BYTES // 1_000_000} MB; that is not a logo")
+    kind = _sniff(data)
+    removed: list[str] = []
+    warnings: list[str] = []
+    if kind == "svg":
+        data, removed = sanitize_svg(data)
+        if not re.search(rb"viewBox\s*=", data[:2000]):
+            warnings.append("SVG has no viewBox; it may not scale cleanly")
+    else:
+        size = _raster_size(data, kind)
+        if size and min(size) < 96:
+            warnings.append(f"raster logo is only {size[0]}x{size[1]} px; it will look blurry - prefer an SVG")
+        elif not size:
+            warnings.append("raster logo: prefer an SVG, it stays sharp at any size")
+    stem = name or Path(urllib.parse.urlparse(source).path).stem or "logo"
+    stem = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-") or "logo"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{stem}.{kind}"
+    path.write_bytes(data)
+    return path, removed, warnings
+
+
 def preview(refs: list[str], out: Path, cols: int = 6) -> int:
     """Write an SVG contact sheet of candidate icons (ref printed under each) to compare them visually."""
     from html import escape
@@ -502,6 +633,12 @@ def main() -> None:
     sh = sub.add_parser("show")
     sh.add_argument("ref")
     sub.add_parser("build-catalogs")
+    fe = sub.add_parser("fetch", help="save a logo (URL or local file) into the project, cleaning SVGs")
+    fe.add_argument("source", help="http(s) URL of the logo file, or a local path")
+    fe.add_argument("--out", required=True, help="folder to save into, e.g. docs/architecture/icons")
+    fe.add_argument("--name", help="file name without extension (default: from the source)")
+    fe.add_argument("--relative-to", help="folder of the spec that will use it; the printed ref is relative to it "
+                                          "(spec svg: paths resolve from the spec's folder)")
     a = ap.parse_args()
     if a.cmd == "search":
         for ref, hint in search(a.words, a.set, a.limit):
@@ -515,6 +652,27 @@ def main() -> None:
                           "style": ic.drawio_style()[:300] + ("..." if len(ic.drawio_style()) > 300 else "")}, indent=2))
     elif a.cmd == "build-catalogs":
         build_catalogs()
+    elif a.cmd == "fetch":
+        try:
+            path, removed, warnings = fetch_icon(a.source, Path(a.out), a.name)
+        except (ValueError, OSError) as e:
+            sys.exit(f"fetch failed: {e}")
+        for item in removed:
+            print(f"removed: {item}")
+        for w in warnings:
+            print(f"warning: {w}")
+        print(f"saved {path}")
+        full = path.resolve()
+        if a.relative_to:
+            try:
+                shown = Path(os.path.relpath(full, Path(a.relative_to).resolve())).as_posix()
+            except ValueError:  # different drive on Windows
+                shown = full.as_posix()
+        else:  # relative to here when it sits below the current folder, else absolute
+            shown = full.relative_to(Path.cwd()).as_posix() if full.is_relative_to(Path.cwd()) else full.as_posix()
+        print(f"ref: svg:{shown}")
+        if re.match(r"^https?://", a.source):
+            print(f"source (put it in the spec's credits): {a.source}")
     elif a.cmd == "preview":
         n = preview(a.refs, Path(a.out))
         print(f"wrote {a.out} with {n} icons - render with: python {Path(__file__).parent / 'render.py'} {a.out} sheet.png")

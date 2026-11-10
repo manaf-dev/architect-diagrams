@@ -43,6 +43,7 @@ python ${CLAUDE_SKILL_DIR}/scripts/icons.py search "function apps"          # no
 python ${CLAUDE_SKILL_DIR}/scripts/icons.py list-lib fabric-artifacts        # browse a draw.io library
 python ${CLAUDE_SKILL_DIR}/scripts/icons.py show "stencil:gcp2/Cloud Run"    # check what a ref resolves to
 python ${CLAUDE_SKILL_DIR}/scripts/icons.py preview <ref> <ref> ... --out sheet.svg   # contact sheet; render it and look
+python ${CLAUDE_SKILL_DIR}/scripts/icons.py fetch <url-or-file> --out <icons dir> --relative-to <spec dir>   # save a logo safely (step 2b)
 ```
 
 Reference forms (details and vendor notes in `references/icon-sources.md`):
@@ -61,6 +62,33 @@ Use the vendor's own icon for vendor services. Use a plain `box` for things that
 clean box. Search results show exact titles; copy them, don't retype from memory. When several candidates fit (old vs
 current artwork such as Azure AD vs Entra ID, duplicates across sets, a vendor set vs a community library),
 build a `preview` sheet, render it and pick by eye — vendor icons get redesigned and file names lag behind.
+
+### 2b. Missing icons: ask once, then fetch, use theirs, or box
+
+When a component has a real product or brand identity (a SaaS product, an open-source project, the
+user's own named app) but no catalog has its icon, don't decide alone. Collect **every** such component
+first, then ask the user **one** question that covers them all, with three options each:
+
+> I couldn't find icons for **Stripe Radar**, **OrderHub** and **Acme CRM**. For each, should I
+> (a) look up the official logo online, (b) use a logo file you give me (best for internal apps), or
+> (c) draw a plain labelled box?
+
+- **(a) Look it up.** Before searching the web, run `icons.py build-catalogs` once: the Simple Icons
+  catalog may just be stale. Then take the logo from the vendor's own brand or press page, its GitHub
+  organisation, or Wikimedia Commons, in that order. Never from image-search results or icon-pack sites.
+  Use the logo file's own URL (an `.svg` or `.png`), not the page it sits on.
+- **(b) Their file.** Ask for the path or URL. Internal logos belong to the user, so no credit line is needed.
+- For (a) and (b), **always** save it with `icons.py fetch <url-or-path> --out <project>/docs/architecture/icons
+  --relative-to <spec folder>` and use the `svg:` ref it prints. `fetch` refuses web pages and oversized
+  files, strips scripts and external links from SVGs, and keeps the logo in the project so the diagram no
+  longer depends on that URL. Don't download logos with `curl` or embed a raw URL in the spec.
+  For a logo from the web, add its source to `credits`.
+- **(c) Box.** Use a `box` with the name and a type line, as for anything without a vendor identity.
+
+Don't ask about things that never have an icon (your own scripts, generic services, "Business users"):
+those are boxes without asking. If you can't ask (a non-interactive run, a subagent, CI), use boxes and
+list the components that got one in your summary, so the user can supply logos later. Record each choice
+in the spec (the `svg:` ref, or the box), so later edits don't ask again.
 
 ### 3. Plan the layout on a grid
 
