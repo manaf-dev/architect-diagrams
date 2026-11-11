@@ -72,9 +72,6 @@ Add `-g` only if you want it everywhere.
 `/plugin install architecture-diagrams@manaf-dev-skills`. Claude Code v2.1.275 and later can do both in one
 step: `/plugin install architecture-diagrams --marketplace manaf-dev/architect-diagrams`.
 
-**Update in Claude Code:** `claude plugin marketplace update manaf-dev-skills`, then
-`claude plugin update architecture-diagrams@manaf-dev-skills`.
-
 **`npx skills` options:** add `-g` to install for all your projects, or `-a codex` to target one agent.
 
 **claude.ai / Claude desktop:** go to **Customize → Plugins → Add → Add marketplace** and enter
@@ -85,6 +82,26 @@ Python, such as Claude Code.
 for example `~/.claude/skills/` for Claude Code or `~/.agents/skills/` for Codex.
 
 </details>
+
+## Updating
+
+**Claude Code:** refresh the marketplace, update the plugin, then restart Claude Code:
+
+```bash
+claude plugin marketplace update manaf-dev-skills
+claude plugin update architecture-diagrams@manaf-dev-skills
+```
+
+To get updates automatically, open `/plugin` → **Marketplaces**, select `manaf-dev-skills` and turn on
+auto-update. It's off by default for marketplaces outside Anthropic's own.
+
+**Codex, Cursor, Copilot, Gemini CLI, OpenCode, Windsurf and others:** run `npx skills update` (add `-g` if
+you installed globally).
+
+**Manual install:** copy `skills/architecture-diagrams/` from the latest
+[release](https://github.com/manaf-dev/architect-diagrams/releases) over your old copy.
+
+To hear about new versions, use **Watch → Custom → Releases** on this repo.
 
 ## Gallery
 
