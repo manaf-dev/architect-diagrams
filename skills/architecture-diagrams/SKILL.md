@@ -81,7 +81,7 @@ first, then ask the user **one** question that covers them all, with three optio
 - For (a) and (b), **always** save it with `icons.py fetch <url-or-path> --out <project>/docs/architecture/icons
   --relative-to <spec folder>` and use the `svg:` ref it prints. `fetch` refuses web pages and oversized
   files, strips scripts and external links from SVGs, and keeps the logo in the project so the diagram no
-  longer depends on that URL. Don't download logos with `curl` or embed a raw URL in the spec.
+  longer depends on that URL. Don't download logos any other way, and don't embed a raw URL in the spec.
   For a logo from the web, add its source to `credits`.
 - **(c) Box.** Use a `box` with the name and a type line, as for anything without a vendor identity.
 
@@ -168,10 +168,27 @@ as a node and does not read exit points back from `.drawio` files, so treat "too
 - README snippet: `![Architecture](docs/architecture/system.svg)` plus a link to the `.drawio` source.
 - Keep the `credits` line for icon packs that ask for attribution, and mention licences when publishing.
 
+## Network access and local programs
+
+The scripts contact only these hosts, and only to download icons or the renderer. Diagrams, specs and code
+are never uploaded anywhere.
+
+| Host | Used by | Why |
+|---|---|---|
+| `raw.githubusercontent.com` | `icons.py` | draw.io's icon SVGs and the Microsoft Fabric icon pack (cached in `~/.cache/archdiagram`) |
+| `cdn.jsdelivr.net` | `icons.py` | Simple Icons brand logos (cached) |
+| `api.github.com` | `icons.py build-catalogs` only | list of draw.io's icon files when refreshing the catalogs |
+| `viewer.diagrams.net` | `render.py` | draw.io's viewer script, to render native AWS/Kubernetes icons to PNG; not used when draw.io Desktop is installed |
+| a logo URL the user approved | `icons.py fetch` | step 2b only, after the user chooses "look it up" |
+
+`render.py` starts a local headless Chrome, Edge or Chromium (or draw.io Desktop) with a fixed argument
+list, never through a shell. Nothing else is executed: icon catalogs are plain JSON with readable SVG text,
+and draw.io's sidebar sources are parsed as data, never run.
+
 ## Gotchas this skill already handles (don't fight them)
 
-- draw.io style strings use `;` as a separator, so embedded icons are written as `data:image/svg+xml,<base64>`
-  without `;base64` — the format draw.io itself uses.
+- draw.io style strings use `;` as a separator, so embedded icons are written as `data:image/svg+xml,<data>`
+  without the `;` encoding marker — the format draw.io itself uses.
 - Icon captions get `whiteSpace=nowrap`; otherwise draw.io wraps them to the icon's width.
 - Native stencils (AWS, Kubernetes) only render inside draw.io, so the standalone SVG shows labelled
   placeholders for them and render.py uses draw.io's own renderer for the PNG.

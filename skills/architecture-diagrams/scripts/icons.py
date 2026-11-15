@@ -162,8 +162,13 @@ def _clean_title(t: str) -> str:
     return re.sub(r"\s+", " ", t.replace("-\n", "-")).strip()
 
 
-def _eval(expr: str, env: dict):
-    """Evaluate a JS expression made only of string/number literals, known variables, + - * / and ()."""
+def _js_literal(expr: str, env: dict):
+    """Read a value out of draw.io's sidebar source without running it.
+
+    A tiny tokenizer + recursive-descent parser for expressions made only of string/number literals,
+    already-known variable names, + - * / and parentheses. Anything else returns None. It never calls
+    Python's eval/exec and never executes the downloaded JavaScript.
+    """
     toks, pos = [], 0
     expr = expr.strip()
     while pos < len(expr):
@@ -267,7 +272,7 @@ def parse_sidebar(js: str) -> list[dict]:
     out, seen = [], set()
     for pos, kind, name in sorted(events):
         if kind == "assign":
-            val = _eval(js[pos:_scan_until(js, pos, ";,")], env)
+            val = _js_literal(js[pos:_scan_until(js, pos, ";,")], env)
             if val is None:
                 env.pop(name, None)
             else:
@@ -275,25 +280,26 @@ def parse_sidebar(js: str) -> list[dict]:
             continue
         if kind == "card":
             args = _split_args(js, pos)
-            label = _eval(args[0], env)
+            label = _js_literal(args[0], env)
             icon_arg = args[8] if name == "addGCP2UserProductCardSet" and len(args) > 8 else args[1] if len(args) > 1 else ""
-            b64 = _eval(icon_arg, env)
+            b64 = _js_literal(icon_arg, env)
             if isinstance(label, str) and isinstance(b64, str) and b64.startswith("PHN2Zy"):
                 title = _clean_title(label)
                 if ("card", title) not in seen:
                     seen.add(("card", title))
-                    out.append({"title": title, "image": _normalise_b64_uri("data:image/svg+xml;base64," + b64), "w": None, "h": None})
+                    svg_text = base64.b64decode(re.sub(r"\s+", "", b64) + "=" * (-len(re.sub(r"\s+", "", b64)) % 4)).decode("utf-8")
+                    out.append({"title": title, "svg": svg_text, "w": None, "h": None})
             continue
         args = _split_args(js, pos)
         if len(args) < 5:
             continue
-        style = _eval(args[0], env)
+        style = _js_literal(args[0], env)
         if not isinstance(style, str) or not style or style in seen:
             continue
-        title = _eval(args[4], env)
+        title = _js_literal(args[4], env)
         if not isinstance(title, str) or not title.strip():
-            title = _eval(args[3], env) or ""
-        w, h = _eval(args[1], env), _eval(args[2], env)
+            title = _js_literal(args[3], env) or ""
+        w, h = _js_literal(args[1], env), _js_literal(args[2], env)
         seen.add(style)
         out.append({"title": _clean_title(str(title)), "style": style,
                     "w": round(w) if isinstance(w, (int, float)) else None,
@@ -301,11 +307,36 @@ def parse_sidebar(js: str) -> list[dict]:
     return out
 
 
+_STYLE_IMAGE = re.compile(r"image=data:image/svg\+xml,([A-Za-z0-9+/=\s]+)")
+
+
+def _readable_entry(entry: dict) -> dict | None:
+    """Store an icon whose draw.io style embeds an SVG as readable SVG text instead of base64.
+
+    Some sidebar entries are just `shape=image;...;image=data:image/svg+xml,<base64>`. Keeping that
+    base64 in the catalog hides the markup from reviewers, so it is decoded once here. Entries whose
+    embedded data is corrupt upstream (they never rendered) are dropped: None.
+    """
+    m = _STYLE_IMAGE.search(entry.get("style", ""))
+    if not m:
+        return entry
+    payload = re.sub(r"\s+", "", m.group(1))
+    if len(payload) % 4 == 1:  # a few upstream entries carry one stray character
+        payload = payload[:-1]
+    try:
+        svg = base64.b64decode(payload + "=" * (-len(payload) % 4)).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if "<svg" not in svg:
+        return None
+    return {"title": entry["title"], "svg": svg, "w": entry.get("w"), "h": entry.get("h")}
+
+
 def build_catalogs() -> None:
     CATALOG_DIR.mkdir(parents=True, exist_ok=True)
     for name, path in STENCIL_SOURCES.items():
         url = f"{DRAWIO_RAW}/{path}"
-        icons = parse_sidebar(fetch(url, binary=False))
+        icons = [e for e in map(_readable_entry, parse_sidebar(fetch(url, binary=False))) if e]
         (CATALOG_DIR / f"{name}.json").write_text(json.dumps({"set": name, "source": url, "icons": icons}), encoding="utf-8")
         print(f"{name}: {len(icons)} icons")
     tree = json.loads(fetch("https://api.github.com/repos/jgraph/drawio/git/trees/dev?recursive=1", binary=False))
@@ -352,9 +383,9 @@ def resolve(ref: str, aliases: dict | None = None) -> Icon:
             close = [e["title"] for e in icons if title.lower() in e["title"].lower()][:8]
             raise KeyError(f"{ref}: no exact title match. Close: {close}")
         e = matches[int(nth) - 1 if nth else 0]
-        if "image" in e:  # embedded SVG product icon (e.g. GCP product cards)
-            uri = _normalise_b64_uri(e["image"])
-            return Icon(ref, "image", e["title"], svg_aspect(base64.b64decode(uri.split(",", 1)[1])), data_uri=uri)
+        if "svg" in e:  # embedded SVG product icon (e.g. GCP), stored as readable SVG text
+            data, _ = sanitize_svg(e["svg"].encode("utf-8"))
+            return Icon(ref, "image", e["title"], svg_aspect(data), data_uri=to_data_uri(data, "icon.svg"))
         aspect = (e["w"] / e["h"]) if e.get("w") and e.get("h") else 1.0
         return Icon(ref, "stencil", e["title"], aspect, style=e["style"])
     if scheme == "drawio":
