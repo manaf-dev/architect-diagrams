@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Catalogs hold readable data only (no long encoded blobs)
+        run: |
+          ! grep -EoR '[A-Za-z0-9+/=]{200,}' skills/architecture-diagrams/assets/catalogs | head -1 | grep -q .
       - name: Skill folder carries the same licence files as the repo root
         run: |
           cmp LICENSE skills/architecture-diagrams/LICENSE
